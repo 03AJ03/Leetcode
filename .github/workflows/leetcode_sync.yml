@@ -1,0 +1,16 @@
+name: Sync LeetCode Past Submissions
+on:
+  workflow_dispatch: # Allows you to trigger this manually whenever you want
+  schedule:
+    - cron: "0 8 * * 6" # Automatically checks for new solutions once a week
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch and Sync History
+        uses: joshcai/leetcode-sync@v1.7
+        with:
+          github-token: ${{ github.token }}
+          leetcode-csrf-token: ${{ secrets.LEETCODE_CSRF_TOKEN }}
+          leetcode-session: ${{ secrets.LEETCODE_SESSION }}
