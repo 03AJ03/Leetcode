@@ -1,15 +1,21 @@
 # Write your MySQL query statement below
-SELECT ROUND(SUM(A.tiv_2016),2) as tiv_2016
-FROM Insurance A
-WHERE tiv_2015 IN(
+WITH duplicate_tiv AS (
     SELECT tiv_2015
     FROM Insurance
     GROUP BY tiv_2015
     HAVING COUNT(*) > 1
-)
-AND (lat,lon) IN (
-    SELECT lat,lon
+),
+unique_location AS (
+    SELECT lat, lon
     FROM Insurance
-    Group by LAT,LON
-    having count(*)=1
+    GROUP BY lat, lon
+    HAVING COUNT(*) = 1
 )
+
+SELECT ROUND(SUM(i.tiv_2016), 2) AS tiv_2016
+FROM Insurance i
+JOIN duplicate_tiv d
+ON i.tiv_2015 = d.tiv_2015
+JOIN unique_location u
+ON i.lat = u.lat
+AND i.lon = u.lon;
