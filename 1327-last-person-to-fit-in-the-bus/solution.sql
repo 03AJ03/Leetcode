@@ -4,4 +4,5 @@ with cte as (
 )
 select person_name from cte 
 where bus_weight<=1000 
-order by bus_weight desc limit 1
+order by bus_weight desc 
+limit 1
