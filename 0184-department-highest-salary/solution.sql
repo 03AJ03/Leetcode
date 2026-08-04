@@ -1,16 +1,10 @@
 # Write your MySQL query statement below
-SELECT Department,
-Employee,
-Salary
-FROM
-(SELECT D.name as Department,
-E.name as Employee,
-E.salary as Salary,
-DENSE_RANK() OVER(
-    PARTITION BY E.departmentId
-    ORDER BY E.salary desc
-    )AS rankk
-FROM Employee E
-JOIN Department D ON E.departmentId=D.id
-)t
-WHERE rankk=1;
+WITH cte AS(
+    SELECT d.name as Department,e.name as Employee,e.salary AS Salary,
+    DENSE_RANK() OVER(PARTITION BY e.departmentId ORDER BY e.salary desc) as rnk
+    FROM Employee e
+    JOIN Department d ON d.id=e.departmentId
+)
+SELECT Department,Employee,Salary
+FROM cte
+WHERE rnk=1
