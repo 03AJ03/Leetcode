@@ -1,24 +1,18 @@
-WITH daily AS (
-    SELECT
-        visited_on,
-        SUM(amount) AS amount
+WITH cte AS(
+    SELECT visited_on,SUM(amount) AS amount
     FROM Customer
     GROUP BY visited_on
+    HAVING COUNT(customer_id)>=1
 ),
-windowed AS (
-
-    SELECT
-        visited_on,
-        SUM(amount)  OVER w        AS amount,
-        ROUND(AVG(amount) OVER w, 2) AS average_amount,
-        COUNT(*)     OVER w        AS day_count
-    FROM daily
-    WINDOW w AS (
-        ORDER BY visited_on
-        ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
-    )
+cte2 AS(
+    SELECT visited_on,
+    ROUND(SUM(amount) OVER( ORDER BY visited_on ROWS BETWEEN 6 PRECEDING AND CURRENT ROW),2) AS amount,
+    ROUND(AVG(amount) OVER( ORDER BY visited_on ROWS BETWEEN 6 PRECEDING AND CURRENT ROW),2) AS average_amount,
+    ROUND(COUNT(*) OVER( ORDER BY visited_on ROWS BETWEEN 6 PRECEDING AND CURRENT ROW),2) AS num_days
+    FROM cte
 )
-SELECT visited_on, amount, average_amount
-FROM windowed
-WHERE day_count = 7
-ORDER BY visited_on;
+-- SELECT visited_on,amount,average_amount
+SELECT visited_on,amount,average_amount
+FROM cte2
+WHERE num_days=7
+ORDER BY visited_on
