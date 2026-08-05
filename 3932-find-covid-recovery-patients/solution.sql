@@ -33,4 +33,5 @@ GROUP BY
     P.age
 ORDER BY
     recovery_time ASC,
-    P.patient_name ASC;
+    P.patient_name ASC
+;
