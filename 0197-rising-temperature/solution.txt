@@ -1,0 +1,14 @@
+import pandas as pd
+
+def rising_temperature(weather: pd.DataFrame) -> pd.DataFrame:
+    weather['prevDate'] = weather['recordDate'] - pd.Timedelta(days=1)
+
+    df = pd.merge(
+        weather,
+        weather,
+        left_on='prevDate',
+        right_on='recordDate',
+        suffixes=('_curr', '_prev')
+    )
+
+    return df[df['temperature_curr'] > df['temperature_prev']][['id_curr']].rename(columns={'id_curr':'Id'})

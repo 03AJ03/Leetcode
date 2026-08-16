@@ -1,0 +1,9 @@
+import pandas as pd
+
+def sales_person(sales_person: pd.DataFrame, company: pd.DataFrame, orders: pd.DataFrame) -> pd.DataFrame:
+    df = pd.merge(sales_person, orders, on='sales_id', how='left')
+    df = pd.merge(df, company, on='com_id', how='left', suffixes=('_sales', '_company'))
+
+    red_salespeople = df[df['name_company'] == 'RED']['sales_id']
+
+    return sales_person[~sales_person['sales_id'].isin(red_salespeople)][['name']]
