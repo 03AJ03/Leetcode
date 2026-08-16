@@ -2,6 +2,12 @@ name: LeetCode Auto Sync
 
 on:
   workflow_dispatch:
+    inputs:
+      full_sync:
+        description: "Backfill all solved LeetCode problems"
+        required: true
+        default: false
+        type: boolean
 
   schedule:
     - cron: "0 * * * *"
@@ -29,18 +35,5 @@ jobs:
         env:
           LEETCODE_SESSION: ${{ secrets.LEETCODE_SESSION }}
           LEETCODE_CSRF_TOKEN: ${{ secrets.LEETCODE_CSRF_TOKEN }}
+          FULL_SYNC: ${{ github.event_name == 'workflow_dispatch' && inputs.full_sync || 'false' }}
         run: python scripts/leetcode_sync.py
-
-      - name: Commit changes
-        run: |
-          git config user.name "LeetCode Sync"
-          git config user.email "leetcode-sync@users.noreply.github.com"
-
-          git add .
-
-          if git diff --cached --quiet; then
-            echo "No new submissions."
-          else
-            git commit -m "Sync LeetCode submissions"
-            git push
-          fi
