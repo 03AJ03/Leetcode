@@ -9,6 +9,13 @@ on:
         default: false
         type: boolean
 
+  # Run automatically when the sync script changes, so fixes are applied immediately.
+  # Solution commits themselves do not touch this path, so this does not create a loop.
+  push:
+    paths:
+      - "scripts/leetcode_sync.py"
+      - ".github/workflows/leetcode_sync.yml"
+
   schedule:
     - cron: "0 * * * *"
 
@@ -35,5 +42,5 @@ jobs:
         env:
           LEETCODE_SESSION: ${{ secrets.LEETCODE_SESSION }}
           LEETCODE_CSRF_TOKEN: ${{ secrets.LEETCODE_CSRF_TOKEN }}
-          FULL_SYNC: ${{ github.event_name == 'workflow_dispatch' && inputs.full_sync || 'false' }}
+          FULL_SYNC: ${{ github.event_name == 'workflow_dispatch' && inputs.full_sync || 'true' }}
         run: python scripts/leetcode_sync.py
