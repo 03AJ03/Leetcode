@@ -27,10 +27,6 @@ COOKIES = {
 }
 
 
-class LeetCodeError(RuntimeError):
-    pass
-
-
 def graphql(query, variables=None, operation_name=None):
     response = requests.post(
         GRAPHQL_URL,
@@ -43,16 +39,13 @@ def graphql(query, variables=None, operation_name=None):
         },
         timeout=30,
     )
-
     response.raise_for_status()
-
     payload = response.json()
 
     if payload.get("errors"):
-        raise LeetCodeError(str(payload["errors"]))
-
+        raise RuntimeError(str(payload["errors"]))
     if "data" not in payload:
-        raise LeetCodeError(f"Unexpected LeetCode response: {payload}")
+        raise RuntimeError(f"Unexpected LeetCode response: {payload}")
 
     return payload["data"]
 
@@ -66,12 +59,11 @@ def get_username():
         }
     }
     """
-
     data = graphql(query, operation_name="userStatus")
     user = data["userStatus"]
 
     if not user["isSignedIn"]:
-        raise LeetCodeError("LeetCode session is not signed in.")
+        raise RuntimeError("LeetCode session is not signed in.")
 
     return user["username"]
 
@@ -87,13 +79,11 @@ def get_recent_submissions(username, limit=20):
         }
     }
     """
-
     data = graphql(
         query,
         {"username": username, "limit": limit},
         "recentAcSubmissions",
     )
-
     return data.get("recentAcSubmissionList") or []
 
 
@@ -112,21 +102,17 @@ def get_solved_questions():
         }
     }
     """
-
-    variables = {
-        "filters": {
-            "questionStatus": "SOLVED",
-            "skip": 0,
-            "limit": 4000,
-        }
-    }
-
     data = graphql(
         query,
-        variables,
+        {
+            "filters": {
+                "questionStatus": "SOLVED",
+                "skip": 0,
+                "limit": 4000,
+            }
+        },
         "userProgressQuestionList",
     )
-
     return data.get("userProgressQuestionList", {}).get("questions") or []
 
 
@@ -163,7 +149,6 @@ def get_latest_accepted_submission(title_slug):
         }
     }
     """
-
     data = graphql(
         query,
         {
@@ -175,9 +160,7 @@ def get_latest_accepted_submission(title_slug):
         },
         "submissionList",
     )
-
     submissions = data.get("questionSubmissionList", {}).get("submissions") or []
-
     return submissions[0] if submissions else None
 
 
@@ -200,20 +183,16 @@ def get_submission_details(submission_id):
         }
     }
     """
-
     data = graphql(
         query,
         {"submissionId": int(submission_id)},
         "submissionDetails",
     )
-
     return data.get("submissionDetails")
 
 
 def clean_slug(slug):
-    slug = slug.lower()
-    slug = re.sub(r"[^a-z0-9]+", "-", slug)
-    return slug.strip("-")
+    return re.sub(r"[^a-z0-9]+", "-", slug.lower()).strip("-")
 
 
 def get_folder(question):
@@ -221,13 +200,11 @@ def get_folder(question):
         number = f"{int(question['questionId']):04d}"
     except (ValueError, TypeError):
         number = str(question["questionId"])
-
     return f"{number}-{clean_slug(question['titleSlug'])}"
 
 
 def get_extension(language):
     language = language.lower()
-
     extensions = {
         "python": ".py",
         "python3": ".py",
@@ -252,30 +229,20 @@ def get_extension(language):
         "php": ".php",
         "scala": ".scala",
     }
-
     return extensions.get(language, ".txt")
 
 
 def parse_timestamp(value):
     if value is None:
         return None
-
-    if isinstance(value, (int, float)):
-        return datetime.fromtimestamp(value, tz=timezone.utc)
-
+    if isinstance(value, (int, float)) or str(value).isdigit():
+        return datetime.fromtimestamp(float(value), tz=timezone.utc)
     value = str(value)
-
-    if value.isdigit():
-        return datetime.fromtimestamp(int(value), tz=timezone.utc)
-
     if value.endswith("Z"):
         value = value[:-1] + "+00:00"
-
     dt = datetime.fromisoformat(value)
-
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
-
     return dt.astimezone(timezone.utc)
 
 
@@ -283,35 +250,19 @@ def git_date(dt):
     return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def find_existing_solution(directory):
-    if not directory.exists():
-        return None
-
-    for path in directory.glob("solution.*"):
-        if path.is_file():
-            return path
-
-    return None
-
-
 def commit_solution(path, title, timestamp):
     if not FULL_SYNC:
         return
 
-    subprocess.run(
-        ["git", "add", str(path)],
-        check=True,
-    )
-
-    date = git_date(timestamp)
+    subprocess.run(["git", "add", str(path)], check=True)
 
     env = os.environ.copy()
     env["GIT_AUTHOR_NAME"] = "03AJ03"
     env["GIT_AUTHOR_EMAIL"] = "203957546+03AJ03@users.noreply.github.com"
     env["GIT_COMMITTER_NAME"] = "03AJ03"
     env["GIT_COMMITTER_EMAIL"] = "203957546+03AJ03@users.noreply.github.com"
-    env["GIT_AUTHOR_DATE"] = date
-    env["GIT_COMMITTER_DATE"] = date
+    env["GIT_AUTHOR_DATE"] = git_date(timestamp)
+    env["GIT_COMMITTER_DATE"] = git_date(timestamp)
 
     subprocess.run(
         ["git", "commit", "-m", f"LeetCode: {title}"],
@@ -321,10 +272,7 @@ def commit_solution(path, title, timestamp):
 
 
 def save_submission(details, fallback_timestamp=None):
-    if not details:
-        return False
-
-    if details.get("statusCode") != 10:
+    if not details or details.get("statusCode") != 10:
         return False
 
     code = details.get("code")
@@ -338,11 +286,12 @@ def save_submission(details, fallback_timestamp=None):
     directory = Path(folder)
     directory.mkdir(parents=True, exist_ok=True)
 
+    # IMPORTANT: check only the file for THIS language.
+    # solution.sql existing must not prevent solution.py from being added.
     file_path = directory / f"solution{extension}"
-    existing = find_existing_solution(directory)
 
-    if existing:
-        print(f"Already synced: {question['title']}")
+    if file_path.exists():
+        print(f"Already synced: {question['title']} [{language}]")
         return False
 
     file_path.write_text(code.rstrip() + "\n", encoding="utf-8")
@@ -353,14 +302,12 @@ def save_submission(details, fallback_timestamp=None):
     if timestamp is None:
         timestamp = datetime.now(timezone.utc)
 
-    commit_solution(file_path, question["titleSlug"], timestamp)
+    commit_solution(file_path, question["title"], timestamp)
 
     print(
-        f"SYNCED: {question['questionId']} - "
-        f"{question['title']} ({language}) - "
-        f"{timestamp.isoformat()}"
+        f"SYNCED: {question['questionId']} - {question['title']} "
+        f"({language}) - {timestamp.isoformat()}"
     )
-
     return True
 
 
@@ -383,21 +330,15 @@ def sync_history():
     for index, question in enumerate(questions, start=1):
         try:
             submission = get_latest_accepted_submission(question["titleSlug"])
-
             if not submission:
                 print(f"[{index}/{len(questions)}] No accepted submission: {question['title']}")
                 continue
 
             details = get_submission_details(submission["id"])
-
             if details:
                 save_submission(details, question.get("lastSubmittedAt"))
-
         except Exception as exc:
-            print(
-                f"[{index}/{len(questions)}] Failed: "
-                f"{question['title']}: {exc}"
-            )
+            print(f"[{index}/{len(questions)}] Failed: {question['title']}: {exc}")
 
 
 def push_commits():
@@ -410,10 +351,7 @@ def push_commits():
 
     if result.stdout.strip():
         subprocess.run(["git", "add", "."], check=True)
-        subprocess.run(
-            ["git", "commit", "-m", "Sync LeetCode submissions"],
-            check=True,
-        )
+        subprocess.run(["git", "commit", "-m", "Sync LeetCode submissions"], check=True)
 
     ahead = subprocess.run(
         ["git", "rev-list", "--count", "origin/main..HEAD"],
@@ -431,7 +369,6 @@ def push_commits():
 
 def main():
     print("Checking LeetCode...")
-
     username = get_username()
     print(f"Logged in as: {username}")
 
