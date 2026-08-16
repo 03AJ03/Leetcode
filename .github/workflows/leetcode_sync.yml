@@ -4,13 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       full_sync:
-        description: "Backfill all solved LeetCode problems"
+        description: "Backfill all solved LeetCode problems and heatmap"
         required: true
         default: false
         type: boolean
 
-  # Run automatically when the sync script changes, so fixes are applied immediately.
-  # Solution commits themselves do not touch this path, so this does not create a loop.
   push:
     paths:
       - "scripts/leetcode_sync.py"
@@ -42,5 +40,5 @@ jobs:
         env:
           LEETCODE_SESSION: ${{ secrets.LEETCODE_SESSION }}
           LEETCODE_CSRF_TOKEN: ${{ secrets.LEETCODE_CSRF_TOKEN }}
-          FULL_SYNC: ${{ github.event_name == 'workflow_dispatch' && inputs.full_sync || 'true' }}
+          FULL_SYNC: ${{ github.event_name == 'workflow_dispatch' && inputs.full_sync || 'false' }}
         run: python scripts/leetcode_sync.py
