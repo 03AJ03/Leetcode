@@ -143,24 +143,45 @@ def get_submission_details(submission_id):
     return data.get("submissionDetails")
 
 
-def get_submission_calendar(username, year=None):
+def get_calendar_for_year(username, year):
     data = graphql(
         """
-        query userSubmissionCalendar($username: String!, $year: Int) {
+        query userProfileCalendar($username: String!, $year: Int) {
             matchedUser(username: $username) {
-                submissionCalendar(year: $year)
+                userCalendar(year: $year) {
+                    activeYears
+                    totalActiveDays
+                    submissionCalendar
+                }
             }
         }
         """,
         {"username": username, "year": year},
-        "userSubmissionCalendar",
+        "userProfileCalendar",
     )
-    raw = data.get("matchedUser", {}).get("submissionCalendar")
-    if not raw:
-        return {}
+
+    calendar = data.get("matchedUser", {}).get("userCalendar") or {}
+    raw = calendar.get("submissionCalendar") or "{}"
+
     if isinstance(raw, str):
-        return json.loads(raw)
-    return raw
+        return json.loads(raw), calendar.get("activeYears") or []
+
+    return raw, calendar.get("activeYears") or []
+
+
+def get_all_calendars(username):
+    # Ask LeetCode for the user's active years first, then fetch each year's calendar.
+    calendars = {}
+    _, active_years = get_calendar_for_year(username, None)
+
+    if not active_years:
+        active_years = [datetime.now(timezone.utc).year]
+
+    for year in active_years:
+        calendar, _ = get_calendar_for_year(username, int(year))
+        calendars.update(calendar)
+
+    return calendars
 
 
 def clean_slug(slug):
@@ -253,18 +274,22 @@ def save_submission(details, submission_id, fallback_timestamp=None):
         return False
 
     if file_path.exists():
-        # The solution is already in GitHub, but create a dated contribution commit
-        # so the GitHub heatmap still reflects the LeetCode submission date.
-        commit_with_date(
-            f"{marker} - {question['title']}", timestamp, allow_empty=True
-        )
-        print(f"CONTRIBUTION: {question['questionId']} - {question['title']} - {timestamp.date()}")
-        return True
+        existing = file_path.read_text(encoding="utf-8")
+        if existing.strip() == code.strip():
+            # Preserve the exact LeetCode submission date in the contribution graph.
+            commit_with_date(
+                f"{marker} - {question['title']}", timestamp, allow_empty=True
+            )
+            print(f"CONTRIBUTION: {question['questionId']} - {question['title']} - {timestamp.date()}")
+            return True
 
     file_path.write_text(code.rstrip() + "\n", encoding="utf-8")
     subprocess.run(["git", "add", str(file_path)], check=True)
     commit_with_date(f"{marker} - {question['title']}", timestamp)
-    print(f"SYNCED: {question['questionId']} - {question['title']} ({language}) - {timestamp.isoformat()}")
+    print(
+        f"SYNCED: {question['questionId']} - {question['title']} "
+        f"({language}) - {timestamp.isoformat()}"
+    )
     return True
 
 
@@ -295,21 +320,25 @@ def sync_history():
 
 
 def sync_heatmap(username):
-    # GitHub's contribution graph is based on Git commits, so create one
-    # dated marker for every LeetCode day with at least one submission.
-    year = datetime.now(timezone.utc).year
-    calendar = get_submission_calendar(username, year)
+    calendars = get_all_calendars(username)
     created = 0
 
-    for unix_timestamp, count in calendar.items():
+    for unix_timestamp, count in calendars.items():
         if int(count) <= 0:
             continue
+
         day = datetime.fromtimestamp(int(unix_timestamp), tz=timezone.utc).date()
         marker = f"LeetCode calendar: {day.isoformat()}"
+
         if has_marker(marker):
             continue
+
         timestamp = datetime(day.year, day.month, day.day, 12, 0, 0, tzinfo=timezone.utc)
-        commit_with_date(f"{marker} ({count} submissions)", timestamp, allow_empty=True)
+        commit_with_date(
+            f"{marker} ({count} submissions)",
+            timestamp,
+            allow_empty=True,
+        )
         created += 1
 
     print(f"Heatmap backfill: created {created} dated contribution commit(s).")
@@ -322,6 +351,7 @@ def push_commits():
         capture_output=True,
         text=True,
     )
+
     if result.stdout.strip():
         subprocess.run(["git", "add", "."], check=True)
         subprocess.run(["git", "commit", "-m", "Sync LeetCode metadata"], check=True)
@@ -332,6 +362,7 @@ def push_commits():
         capture_output=True,
         text=True,
     ).stdout.strip()
+
     if ahead != "0":
         subprocess.run(["git", "push", "origin", "main"], check=True)
         print(f"Pushed {ahead} commit(s) to GitHub.")
@@ -344,9 +375,10 @@ def main():
     username = get_username()
     print(f"Logged in as: {username}")
 
-    # Always check recent submissions. Full sync additionally backfills every
-    # solved question and the complete submission heatmap for the current year.
+    # Every run checks recent accepted submissions.
     sync_recent(username)
+
+    # Full sync is only used when manually requested.
     if FULL_SYNC:
         print("FULL SYNC enabled: backfilling solved problems and heatmap.")
         sync_history()
