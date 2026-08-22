@@ -1,0 +1,29 @@
+import pandas as pd
+
+def average_selling_price(prices: pd.DataFrame, units_sold: pd.DataFrame) -> pd.DataFrame:
+
+    df = pd.merge(prices, units_sold, on='product_id', how='inner')
+
+    df = df[
+        (df['purchase_date'] >= df['start_date']) &
+        (df['purchase_date'] <= df['end_date'])
+    ]
+
+    df['revenue'] = df['price'] * df['units']
+
+    df = df.groupby('product_id').agg(
+        total_revenue=('revenue', 'sum'),
+        total_units=('units', 'sum')
+    ).reset_index()
+
+    df['average_price'] = df['total_revenue'] / df['total_units']
+
+    result = prices[['product_id']].drop_duplicates().merge(
+        df[['product_id', 'average_price']],
+        on='product_id',
+        how='left'
+    )
+
+    result['average_price'] = result['average_price'].fillna(0).round(2)
+
+    return result
