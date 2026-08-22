@@ -1,0 +1,37 @@
+import pandas as pd
+
+def students_and_examinations(
+    students: pd.DataFrame,
+    subjects: pd.DataFrame,
+    examinations: pd.DataFrame
+) -> pd.DataFrame:
+
+    examinations = examinations.copy()
+    examinations['attended'] = 1
+
+    # Every student × every subject
+    df = students.merge(subjects, how='cross')
+
+    # Add examination information
+    df = df.merge(
+        examinations,
+        on=['student_id', 'subject_name'],
+        how='left'
+    )
+
+    # Count examinations
+    df = df.groupby(
+        ['student_id', 'student_name', 'subject_name'],
+        dropna=False,
+        as_index=False
+    ).agg(
+        attended_exams=('attended', 'sum')
+    )
+
+    df['attended_exams'] = df['attended_exams'].fillna(0).astype(int)
+
+    df = df.sort_values(
+        ['student_id', 'subject_name']
+    )
+
+    return df
