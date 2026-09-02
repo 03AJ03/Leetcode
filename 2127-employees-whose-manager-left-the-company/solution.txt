@@ -1,0 +1,12 @@
+import pandas as pd
+
+def find_employees(employees: pd.DataFrame) -> pd.DataFrame:
+    df = employees.copy()
+
+    result = df[
+        (df['salary'] < 30000) &
+        (df['manager_id'].notna()) &
+        (~df['manager_id'].isin(df['employee_id']))
+    ]
+
+    return result[['employee_id']].sort_values(by='employee_id')
