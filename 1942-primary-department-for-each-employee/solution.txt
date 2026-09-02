@@ -1,0 +1,10 @@
+import pandas as pd
+
+def find_primary_department(employee: pd.DataFrame) -> pd.DataFrame:
+    count = employee.groupby('employee_id')['department_id'].transform('count')
+
+    result = employee[
+        (employee['primary_flag'] == 'Y') | (count == 1)
+    ]
+
+    return result[['employee_id', 'department_id']]
