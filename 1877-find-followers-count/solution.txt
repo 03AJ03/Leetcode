@@ -1,0 +1,8 @@
+import pandas as pd
+
+def count_followers(followers: pd.DataFrame) -> pd.DataFrame:
+    result=followers.groupby('user_id').agg(
+        followers_count=('follower_id','nunique')
+    ).reset_index()
+    result=result.sort_values(by='user_id')
+    return result[['user_id','followers_count']]
