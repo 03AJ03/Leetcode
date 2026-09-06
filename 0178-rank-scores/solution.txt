@@ -1,0 +1,7 @@
+import pandas as pd
+
+def order_scores(scores: pd.DataFrame) -> pd.DataFrame:
+    df=scores.copy()
+    df['rank']=df['score'].rank(method='dense',ascending=False).astype(int)
+    df=df.sort_values(by='score',ascending=False)
+    return df[['score','rank']]
