@@ -1,0 +1,9 @@
+import pandas as pd
+
+def find_managers(employee: pd.DataFrame) -> pd.DataFrame:
+    managers=employee.merge(employee,left_on='managerId',right_on='id',how='inner',suffixes=('_emp','_mng'))
+    managers['count']=managers.groupby('id_mng')['id_emp'].transform('size')
+    managers=managers[managers['count']>=5]
+    managers = managers[['id_mng', 'name_mng']].drop_duplicates()
+    managers=managers.rename(columns={'name_mng':'name'})
+    return managers[['name']]
