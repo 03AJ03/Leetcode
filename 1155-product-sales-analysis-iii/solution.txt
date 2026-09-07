@@ -1,0 +1,7 @@
+import pandas as pd
+
+def sales_analysis(sales: pd.DataFrame) -> pd.DataFrame:
+    init_year=sales.groupby('product_id')['year'].min().reset_index()
+    df=pd.merge(sales,init_year,on=['product_id','year'],how='inner')
+    result=df[['product_id','year','quantity','price']]
+    return result.rename(columns={'year':'first_year'})
