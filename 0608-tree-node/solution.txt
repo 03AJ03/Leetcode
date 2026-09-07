@@ -1,0 +1,14 @@
+import pandas as pd
+import numpy as np
+def tree_node(tree: pd.DataFrame) -> pd.DataFrame:
+    conditions=[
+        tree['p_id'].isna(),
+        tree['id'].isin(tree['p_id'])
+    ]
+    choices=[
+        'Root',
+        'Inner'
+    ]
+
+    tree['type']=np.select(conditions,choices,default='Leaf')
+    return tree[['id','type']]
