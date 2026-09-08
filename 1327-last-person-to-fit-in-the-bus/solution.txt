@@ -1,0 +1,7 @@
+import pandas as pd
+
+def last_passenger(queue: pd.DataFrame) -> pd.DataFrame:
+    df=queue.sort_values(by='turn')
+    df['bus_weight']=df['weight'].cumsum()
+    df=df[df['bus_weight']<=1000]
+    return df.sort_values(by='bus_weight',ascending=False)[['person_name']].head(1)
