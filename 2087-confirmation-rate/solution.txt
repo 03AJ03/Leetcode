@@ -1,0 +1,14 @@
+import pandas as pd
+
+def confirmation_rate(signups: pd.DataFrame, confirmations: pd.DataFrame) -> pd.DataFrame:
+
+    df = pd.merge(signups, confirmations, on='user_id', how='left')
+    req_count = df.groupby('user_id')['time_stamp_y'].nunique()
+    acc_req = (
+        df[df['action'] == 'confirmed']
+        .groupby('user_id')['time_stamp_y']
+        .nunique()
+    )
+    confirmation_rate = (acc_req / req_count).fillna(0).round(2)
+    result = confirmation_rate.reset_index(name='confirmation_rate')
+    return result
