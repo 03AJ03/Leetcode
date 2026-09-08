@@ -1,0 +1,9 @@
+import pandas as pd
+
+def immediate_food_delivery(delivery: pd.DataFrame) -> pd.DataFrame:
+    first_order=delivery.groupby('customer_id')['order_date'].min().reset_index()
+    df=pd.merge(delivery,first_order,on=['customer_id','order_date'],how='inner')
+    total_orders=df['delivery_id'].nunique()
+    immediate_orders=df[df['order_date']==df['customer_pref_delivery_date']]['delivery_id'].nunique()
+    immediate_percentage=round(immediate_orders*100/total_orders,2)
+    return pd.DataFrame({'immediate_percentage':[immediate_percentage]})
