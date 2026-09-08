@@ -1,0 +1,14 @@
+import pandas as pd
+
+def movie_rating(movies: pd.DataFrame, users: pd.DataFrame, movie_rating: pd.DataFrame) -> pd.DataFrame:
+    df=pd.merge(movies,movie_rating,on='movie_id',how='inner').merge(users,on='user_id',how='inner')
+    user_count=df.groupby('user_id')['movie_id'].nunique()
+    user_max=user_count.max()
+    users_with_max = user_count[user_count == user_max].index
+    user_name = df[df['user_id'].isin(users_with_max)]['name'].min()
+
+    df=df[(df['created_at'].dt.month==2) & (df['created_at'].dt.year==2020) ]
+    movie_avg=df.groupby('title')['rating'].mean()
+    movie_max=movie_avg.max()
+    movie_name = movie_avg[movie_avg == movie_max].index.min()
+    return pd.DataFrame({'results':[user_name,movie_name]})
