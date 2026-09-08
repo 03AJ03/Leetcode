@@ -1,0 +1,7 @@
+import pandas as pd
+
+def restaurant_growth(customer: pd.DataFrame) -> pd.DataFrame:
+    df = customer.groupby('visited_on')['amount'].sum().reset_index()
+    df['amount'] = df['amount'].rolling(7).sum()
+    df['average_amount'] = round(df['amount'] / 7,2)
+    return df.dropna()[['visited_on', 'amount', 'average_amount']]
