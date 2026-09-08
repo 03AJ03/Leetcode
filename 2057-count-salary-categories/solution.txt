@@ -1,0 +1,17 @@
+import pandas as pd
+
+def count_salary_categories(accounts: pd.DataFrame) -> pd.DataFrame:
+    df=accounts.copy()
+    condition=[
+        df['income']<20000,
+        (df['income']>=20000) & (df['income']<=50000),
+        df['income']>50000
+    ]
+    choice=[
+        'Low Salary',
+        'Average Salary',
+        'High Salary'
+    ]
+    df['category']=np.select(condition,choice,default='NA')
+    result=df.groupby('category')['account_id'].count().reindex(choice,fill_value=0).reset_index()
+    return result[['category','account_id']].rename(columns={'account_id':'accounts_count'})
