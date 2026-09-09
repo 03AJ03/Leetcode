@@ -1,0 +1,15 @@
+import pandas as pd
+
+def analyze_subscription_conversion(user_activity: pd.DataFrame) -> pd.DataFrame:
+    
+    trial = user_activity[user_activity['activity_type'] == 'free_trial']
+    paid = user_activity[user_activity['activity_type'] == 'paid']
+
+    trial = trial.groupby('user_id')['activity_duration'].mean().reset_index(name='trial_avg_duration')
+    paid = paid.groupby('user_id')['activity_duration'].mean().reset_index(name='paid_avg_duration')
+    df = trial.merge(paid, on='user_id')
+
+    df['trial_avg_duration'] = df['trial_avg_duration'].apply(lambda x: round(x + 1e-10, 2))
+    df['paid_avg_duration'] = df['paid_avg_duration'].apply(lambda x: round(x + 1e-10, 2))
+
+    return df
