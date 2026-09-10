@@ -1,0 +1,40 @@
+import pandas as pd
+import numpy as np
+
+def seasonal_sales_analysis(products: pd.DataFrame, sales: pd.DataFrame) -> pd.DataFrame:
+    condition = [
+        sales['sale_date'].dt.month.isin([12, 1, 2]),
+        sales['sale_date'].dt.month.isin([3, 4, 5]),
+        sales['sale_date'].dt.month.isin([6, 7, 8]),
+        sales['sale_date'].dt.month.isin([9, 10, 11])
+    ]
+    choice = [
+        'Winter',
+        'Spring',
+        'Summer',
+        'Fall'
+    ]
+    sales['season'] = np.select(condition, choice)
+    df = sales.merge(
+        products,
+        on='product_id',
+        how='inner'
+    )
+    df['revenue'] = df['quantity'] * df['price']
+    result = df.groupby(
+        ['season', 'category'],
+        as_index=False
+    ).agg(
+        total_quantity=('quantity', 'sum'),
+        total_revenue=('revenue', 'sum')
+    )
+    result = result.sort_values(
+        by=['season', 'total_quantity', 'total_revenue', 'category'],
+        ascending=[True, False, False, True]
+    )
+    result = result.groupby('season',as_index=False).first()
+    season_order = ['Fall', 'Spring', 'Summer', 'Winter']
+    result['season'] = pd.Categorical(result['season'],categories=season_order,ordered=True)
+    result = result.sort_values('season')
+    result['season'] = result['season'].astype(str)
+    return result[['season', 'category', 'total_quantity', 'total_revenue']]
