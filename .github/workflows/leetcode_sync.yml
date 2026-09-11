@@ -36,9 +36,26 @@ jobs:
       - name: Install dependencies
         run: pip install requests
 
+      - name: Check LeetCode credentials
+        env:
+          LEETCODE_SESSION: ${{ secrets.LEETCODE_SESSION }}
+          LEETCODE_CSRF_TOKEN: ${{ secrets.LEETCODE_CSRF_TOKEN }}
+        run: |
+          if [ -z "$LEETCODE_SESSION" ]; then
+            echo "::error title=Missing LeetCode session::LEETCODE_SESSION is empty. Update the repository secret in Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          if [ -z "$LEETCODE_CSRF_TOKEN" ]; then
+            echo "::error title=Missing LeetCode CSRF token::LEETCODE_CSRF_TOKEN is empty. Update the repository secret in Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          echo "LeetCode credentials are present."
+
       - name: Sync LeetCode
         env:
           LEETCODE_SESSION: ${{ secrets.LEETCODE_SESSION }}
           LEETCODE_CSRF_TOKEN: ${{ secrets.LEETCODE_CSRF_TOKEN }}
           FULL_SYNC: ${{ github.event_name == 'workflow_dispatch' && inputs.full_sync || 'false' }}
-        run: python scripts/leetcode_sync.py
+        run: |
+          python scripts/leetcode_sync.py
+        continue-on-error: false
