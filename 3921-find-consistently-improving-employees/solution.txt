@@ -1,0 +1,13 @@
+import pandas as pd
+
+def find_consistently_improving_employees(employees: pd.DataFrame, performance_reviews: pd.DataFrame) -> pd.DataFrame:
+    df = performance_reviews.sort_values(['employee_id', 'review_date']) 
+    df = df.groupby('employee_id').tail(3)
+    df = df.groupby('employee_id').filter(lambda x: len(x) == 3) 
+    df['d'] = df.groupby('employee_id')['rating'].diff() 
+    good = df.groupby('employee_id')['d'].apply(lambda x: x.iloc[1:].gt(0).all()) 
+    df = df[df.employee_id.isin(good[good].index)] 
+    df = df.groupby('employee_id')['rating'].agg(['first', 'last']).reset_index() 
+    df['improvement_score'] = df['last'] - df['first'] 
+    df = df.merge(employees, on='employee_id') 
+    return df[['employee_id', 'name', 'improvement_score']].sort_values( ['improvement_score', 'name'], ascending=[False, True] ).reset_index(drop=True)
