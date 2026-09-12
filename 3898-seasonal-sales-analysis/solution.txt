@@ -33,8 +33,8 @@ def seasonal_sales_analysis(products: pd.DataFrame, sales: pd.DataFrame) -> pd.D
         ascending=[True, False, False, True]
     )
     result = result.groupby('season',as_index=False).first()
-    season_order = ['Fall', 'Spring', 'Summer', 'Winter']
-    result['season'] = pd.Categorical(result['season'],categories=season_order,ordered=True)
+    # season_order = ['Fall', 'Spring', 'Summer', 'Winter']
+    # result['season'] = pd.Categorical(result['season'],categories=season_order,ordered=True)
     result = result.sort_values('season')
-    result['season'] = result['season'].astype(str)
+    result['season'] = result['season']
     return result[['season', 'category', 'total_quantity', 'total_revenue']]
