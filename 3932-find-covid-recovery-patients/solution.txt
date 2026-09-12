@@ -1,0 +1,18 @@
+import pandas as pd
+
+def find_covid_recovery_patients(patients: pd.DataFrame, covid_tests: pd.DataFrame) -> pd.DataFrame:
+    covid_tests['test_date'] = pd.to_datetime(covid_tests['test_date'])
+    positive = covid_tests[covid_tests['result'] == 'Positive']
+    negative = covid_tests[covid_tests['result'] == 'Negative']
+    first_positive = positive.groupby('patient_id')['test_date'].min().reset_index()
+    first_positive.columns = ['patient_id', 'positive_date']
+    df = negative.merge(first_positive, on='patient_id')
+    df = df[df['test_date'] > df['positive_date']]
+    first_negative = df.groupby('patient_id')['test_date'].min().reset_index()
+    first_negative.columns = ['patient_id', 'negative_date']
+    df = first_positive.merge(first_negative, on='patient_id')
+    df['recovery_time'] = (df['negative_date'] - df['positive_date']).dt.days
+    final = df.merge(patients, on='patient_id')
+    return final[['patient_id', 'patient_name', 'age', 'recovery_time']].sort_values(
+        ['recovery_time', 'patient_name']
+    )
