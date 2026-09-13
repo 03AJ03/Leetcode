@@ -1,0 +1,19 @@
+import pandas as pd
+
+def find_loyal_customers(customer_transactions: pd.DataFrame) -> pd.DataFrame:
+    customer_transactions['transaction_date'] = pd.to_datetime(customer_transactions['transaction_date'])
+    result = customer_transactions.groupby('customer_id').agg(
+        purchases=('transaction_type', lambda x: (x == 'purchase').sum()),
+        refunds=('transaction_type', lambda x: (x == 'refund').sum()),
+        start=('transaction_date', 'min'),
+        end=('transaction_date', 'max')
+    ).reset_index()
+    result['refund_rate'] = result['refunds'] / (
+        result['purchases'] + result['refunds']
+    )
+    result = result[
+        (result['purchases'] >= 3) &
+        ((result['end'] - result['start']).dt.days >= 30) &
+        (result['refund_rate'] < 0.2)
+    ]
+    return result[['customer_id']].sort_values('customer_id')
