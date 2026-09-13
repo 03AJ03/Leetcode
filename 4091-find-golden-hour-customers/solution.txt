@@ -1,0 +1,39 @@
+import pandas as pd
+
+def find_golden_hour_customers(restaurant_orders: pd.DataFrame) -> pd.DataFrame:
+    restaurant_orders['order_timestamp']=pd.to_datetime(
+        restaurant_orders['order_timestamp']
+    )
+    hour = restaurant_orders.order_timestamp.dt.hour
+
+    restaurant_orders['peak'] = (
+        ((hour >= 11) & (hour < 14)) |
+        ((hour >= 18) & (hour < 21))
+    )
+
+    result = restaurant_orders.groupby('customer_id').agg(
+        total_orders=('order_id', 'count'),
+        peak_orders=('peak', 'sum'),
+        rated=('order_rating', 'count'),
+        average_rating=('order_rating', 'mean')
+    ).reset_index()
+
+    result['peak_hour_percentage'] = (
+        result.peak_orders / result.total_orders * 100
+    ).round()
+
+    result['average_rating'] = result.average_rating.round(2)
+
+    result = result[
+        (result.total_orders >= 3) &
+        (result.peak_hour_percentage >= 60) &
+        (result.average_rating >= 4) &
+        (result.rated / result.total_orders >= 0.5)
+    ]
+
+    return result[
+        ['customer_id', 'total_orders', 'peak_hour_percentage', 'average_rating']
+    ].sort_values(
+        ['average_rating', 'customer_id'],
+        ascending=[False, False]
+    )
