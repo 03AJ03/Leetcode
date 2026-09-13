@@ -1,0 +1,22 @@
+import pandas as pd
+
+def find_inventory_imbalance(stores, inventory):
+    x = inventory.groupby('store_id').filter(lambda x: x['product_name'].nunique() >= 3)
+    cheap = x.sort_values('price').groupby('store_id').first().reset_index()
+    expensive = x.sort_values('price', ascending=False).groupby('store_id').first().reset_index()
+    result = cheap[['store_id','product_name','quantity']].merge(
+        expensive[['store_id','product_name','quantity']], on='store_id')
+    result = result[result['quantity_x'] > result['quantity_y']]
+    result['imbalance_ratio'] = (result['quantity_x'] / result['quantity_y']).round(2)
+    result = result.merge(stores, on='store_id')
+    result = result.rename(columns={
+        'product_name_x': 'cheapest_product',
+        'product_name_y': 'most_exp_product'
+    })
+    return result[
+        ['store_id','store_name','location',
+         'most_exp_product','cheapest_product','imbalance_ratio']
+    ].sort_values(
+        ['imbalance_ratio','store_name'],
+        ascending=[False, True]
+    )
