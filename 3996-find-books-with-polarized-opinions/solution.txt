@@ -1,0 +1,25 @@
+import pandas as pd
+
+def find_polarized_books(books: pd.DataFrame, reading_sessions: pd.DataFrame) -> pd.DataFrame:
+    x = reading_sessions.groupby('book_id').filter(lambda x: len(x) >= 5)
+    total = x.groupby('book_id').size()
+    low = x[x['session_rating'] <= 2].groupby('book_id').size()
+    high = x[x['session_rating'] >= 4].groupby('book_id').size()
+    result = pd.DataFrame({
+        'total': total,
+        'low': low,
+        'high': high
+    }).fillna(0)
+    result['rating_spread'] = (
+        x.groupby('book_id')['session_rating'].max() -
+        x.groupby('book_id')['session_rating'].min()
+    )
+    result['polarization_score'] = ((result['low'] + result['high']) / result['total']+1e-9)
+    result = result[
+        (result['low'] >= 1) &
+        (result['high'] >= 1) &
+        (result['polarization_score'] >= 0.6)
+    ]
+    result = result.reset_index().merge(books, on='book_id')
+    result['polarization_score'] = result['polarization_score'].round(2)
+    return result[['book_id', 'title', 'author', 'genre', 'pages','rating_spread', 'polarization_score']].sort_values(['polarization_score', 'title'],ascending=[False, False])
