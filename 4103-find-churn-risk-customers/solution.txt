@@ -1,0 +1,22 @@
+import pandas as pd
+
+def find_churn_risk_customers(subscription_events: pd.DataFrame) -> pd.DataFrame:
+    subscription_events['event_date']=pd.to_datetime(subscription_events['event_date'])
+    subscription_events=subscription_events.sort_values(by='event_date')
+    x=subscription_events.groupby('user_id').filter(lambda x:x['event_type'].iloc[-1]!='cancel')
+    df=x.groupby('user_id').agg(
+        num_down=('event_type',lambda x:(x=='downgrade').sum()),
+        max_historical_amount=('monthly_amount','max'),
+        current_monthly_amount=('monthly_amount','last'),
+        max_date=('event_date','max'),
+        min_date=('event_date','min'),
+        current_plan=('plan_name', 'last'),
+    ).reset_index()
+    df['days_as_subscriber']=(df['max_date']-df['min_date']).dt.days
+    df=df[
+        (df['num_down']>=1) & 
+        (df['current_monthly_amount']<df['max_historical_amount']*0.5) &
+        (df['days_as_subscriber']>=60)
+    ]
+    df=df.sort_values(by=['days_as_subscriber','user_id'],ascending=[False,True])
+    return df[['user_id','current_plan','current_monthly_amount','max_historical_amount','days_as_subscriber']]
