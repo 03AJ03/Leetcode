@@ -1,0 +1,27 @@
+import pandas as pd
+from decimal import Decimal, ROUND_HALF_UP
+
+def find_emotionally_consistent_users(reactions: pd.DataFrame) -> pd.DataFrame:
+    x = reactions.groupby('user_id').agg(
+        total=('reaction', 'size'),
+        content=('content_id', 'nunique'),
+        dominant_reaction=('reaction', lambda x: x.value_counts().index[0]),
+        max_count=('reaction', lambda x: x.value_counts().max())
+    ).reset_index()
+
+    x = x[x['content'] >= 5]
+
+    x['reaction_ratio'] = x.apply(
+        lambda r: float(
+            (Decimal(r['max_count']) / Decimal(r['total']))
+            .quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        ),
+        axis=1
+    )
+
+    x = x[x['reaction_ratio'] >= 0.60]
+
+    return x.sort_values(
+        ['reaction_ratio', 'user_id'],
+        ascending=[False, True]
+    )[['user_id', 'dominant_reaction', 'reaction_ratio']]
