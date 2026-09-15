@@ -1,0 +1,31 @@
+import pandas as pd
+
+def trips_and_users(trips: pd.DataFrame, users: pd.DataFrame) -> pd.DataFrame:
+    x = trips.merge(
+        users[['users_id', 'banned']],
+        left_on='client_id',
+        right_on='users_id'
+    ).rename(columns={'banned': 'cb'})
+
+    x = x.merge(
+        users[['users_id', 'banned']],
+        left_on='driver_id',
+        right_on='users_id'
+    ).rename(columns={'banned': 'db'})
+
+    x = x[
+        (x['cb'] == 'No') &
+        (x['db'] == 'No') &
+        x['request_at'].between('2013-10-01', '2013-10-03')
+    ]
+
+    df = x.groupby('request_at').agg(
+        total=('id', 'size'),
+        cancelled=('status', lambda x: x.str.startswith('cancelled').sum())
+    ).reset_index()
+
+    df['Cancellation Rate'] = (df['cancelled'] / df['total']).round(2)
+
+    return df.rename(columns={'request_at': 'Day'})[
+        ['Day', 'Cancellation Rate']
+    ]
