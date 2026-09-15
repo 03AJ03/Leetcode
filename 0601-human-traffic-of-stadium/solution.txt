@@ -1,0 +1,15 @@
+import pandas as pd
+
+def human_traffic(stadium: pd.DataFrame) -> pd.DataFrame:
+    x = stadium[stadium['people'] >= 100]
+
+    a = x.merge(x, left_on='id', right_on='id')
+    b = x.merge(x, left_on='id', right_on='id')
+
+    ids = set()
+
+    for i in x['id']:
+        if i + 1 in set(x['id']) and i + 2 in set(x['id']):
+            ids.update([i, i + 1, i + 2])
+
+    return x[x['id'].isin(ids)].sort_values('visit_date')
