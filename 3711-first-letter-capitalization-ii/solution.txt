@@ -1,0 +1,31 @@
+import pandas as pd
+import numpy as np
+import re
+
+def capitalize_content(user_content: pd.DataFrame) -> pd.DataFrame:
+
+    def convert(word):
+
+        condition = [
+            not re.match(r'^[A-Za-z]', word),
+            bool(re.match(r'^[A-Za-z]+(?:-[A-Za-z]+)+$', word))
+        ]
+
+        choice = [
+            word,
+            '-'.join(x.capitalize() for x in word.split('-'))
+        ]
+
+        return np.select(
+            condition,
+            choice,
+            word.capitalize()
+        ).item()
+
+    user_content['converted_text'] = user_content['content_text'].apply(
+        lambda x: ' '.join(convert(w) for w in x.split(' '))
+    )
+
+    return user_content.rename(
+        columns={'content_text': 'original_text'}
+    )
