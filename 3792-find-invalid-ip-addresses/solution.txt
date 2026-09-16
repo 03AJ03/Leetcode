@@ -1,0 +1,24 @@
+import pandas as pd
+import numpy as np
+
+def find_invalid_ips(logs: pd.DataFrame) -> pd.DataFrame:
+
+    def check(ip):
+        x = ip.split('.')
+
+        condition = [
+            len(x) != 4,
+            any(not i.isdigit() or len(i) > 3 or (len(i) > 1 and i[0] == '0') or int(i) > 255 for i in x)
+        ]
+
+        choice = [True, True]
+
+        return np.select(condition, choice, False)
+
+    logs['invalid'] = logs['ip'].apply(check)
+
+    df = logs[logs['invalid']]
+
+    ans = df.groupby('ip').size().reset_index(name='invalid_count')
+
+    return ans.sort_values(['invalid_count', 'ip'], ascending=[False, False])
