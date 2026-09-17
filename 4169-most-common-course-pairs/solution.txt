@@ -1,0 +1,27 @@
+import pandas as pd
+
+def topLearnerCourseTransitions(course_completions: pd.DataFrame) -> pd.DataFrame:
+    df = course_completions.copy()
+    df['completion_date'] = pd.to_datetime(df['completion_date'])
+    stats = df.groupby('user_id').agg(
+        courses=('course_id', 'nunique'),
+        rating=('course_rating', 'mean')
+    ).reset_index()
+    top = stats[(stats['courses'] >= 5) & (stats['rating'] >= 4)]
+    df = df.merge(top[['user_id']], on='user_id')
+    df = df.sort_values(['user_id', 'completion_date', 'course_id'])
+    df['second_course'] = df.groupby('user_id')['course_name'].shift(-1)
+    df['second_user'] = df.groupby('user_id')['user_id'].shift(-1)
+    # only keep rows where the shifted row is really the next course of the same user
+    df = df.dropna(subset=['second_course'])
+    ans = df.groupby(
+        ['course_name', 'second_course']
+    ).size().reset_index(name='transition_count')
+    ans.columns = ['first_course', 'second_course', 'transition_count']
+    ans['_f'] = ans['first_course'].str.lower()
+    ans['_s'] = ans['second_course'].str.lower()
+    ans = ans.sort_values(
+        ['transition_count', '_f', '_s'],
+        ascending=[False, True, True]
+    ).drop(columns=['_f', '_s'])
+    return ans.reset_index(drop=True)
