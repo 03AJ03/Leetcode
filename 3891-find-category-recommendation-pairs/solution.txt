@@ -1,0 +1,22 @@
+import pandas as pd
+
+def find_category_recommendation_pairs(product_purchases: pd.DataFrame, product_info: pd.DataFrame) -> pd.DataFrame:
+    df = product_purchases.merge(product_info, on='product_id')
+
+    df = df[['user_id', 'category']].drop_duplicates()
+
+    a = df.merge(df, on='user_id')
+
+    a = a[a['category_x'] < a['category_y']]
+
+    ans = a.groupby(['category_x', 'category_y'])['user_id'].nunique().reset_index(name='customer_count')
+
+    ans = ans[ans['customer_count'] >= 3]
+
+    return ans.sort_values(
+        ['customer_count', 'category_x', 'category_y'],
+        ascending=[False, True, True]
+    ).rename(columns={
+        'category_x': 'category1',
+        'category_y': 'category2'
+    })
