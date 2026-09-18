@@ -1,0 +1,39 @@
+import pandas as pd
+
+def find_zombie_sessions(app_events: pd.DataFrame) -> pd.DataFrame:
+
+    app_events['event_timestamp']=pd.to_datetime(app_events['event_timestamp'])
+
+    df=app_events.groupby('session_id').agg(
+        min_date=('event_timestamp','min'),
+        max_date=('event_timestamp','max'),
+        user_id=('user_id','first')
+    ).reset_index()
+
+    df['session_duration_minutes']=(df['max_date']-df['min_date']).dt.total_seconds()/60
+
+    scroll=app_events[app_events['event_type']=='scroll'].groupby('session_id')['event_id'].nunique().reset_index(name='scroll_count')
+
+    click=app_events[app_events['event_type']=='click'].groupby('session_id')['event_id'].nunique().reset_index(name='num_click')
+
+    purchase=app_events[app_events['event_type']=='purchase'].groupby('session_id')['event_id'].nunique().reset_index(name='num_purchase')
+
+    df=df.merge(scroll,on='session_id',how='left')
+    df=df.merge(click,on='session_id',how='left')
+    df=df.merge(purchase,on='session_id',how='left')
+
+    df=df.fillna(0)
+
+    df['ratio']=df['num_click']/df['scroll_count']
+
+    df=df[
+        (df['session_duration_minutes']>30) &
+        (df['scroll_count']>=5) &
+        (df['ratio']<0.2) &
+        (df['num_purchase']==0)
+    ]
+
+    return df[['session_id','user_id','session_duration_minutes','scroll_count']].sort_values(
+        ['scroll_count','session_id'],
+        ascending=[False,True]
+    )
