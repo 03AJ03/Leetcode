@@ -1,5 +1,7 @@
-WITH RECURSIVE level_cte AS (
-    -- CEO
+# Write your MySQL query statement below
+WITH RECURSIVE hierarchy AS (
+
+    -- CEO starts at level 1
     SELECT
         employee_id,
         employee_name,
@@ -11,51 +13,59 @@ WITH RECURSIVE level_cte AS (
 
     UNION ALL
 
+    -- Find employees under each manager
     SELECT
         e.employee_id,
         e.employee_name,
         e.manager_id,
         e.salary,
-        l.level + 1
+        h.level + 1
     FROM Employees e
-    JOIN level_cte l
-        ON e.manager_id = l.employee_id
+    JOIN hierarchy h
+        ON e.manager_id = h.employee_id
 ),
 
-hierarchy AS (
-    -- Every employee is their own descendant
+subtree AS (
+
+    -- Every employee is initially under themselves
     SELECT
-        employee_id AS manager,
-        employee_id AS subordinate
+        employee_id AS manager_id,
+        employee_id AS employee_id,
+        salary
     FROM Employees
 
     UNION ALL
 
-    -- Expand descendants
+    -- Find direct and indirect employees
     SELECT
-        h.manager,
-        e.employee_id
-    FROM hierarchy h
+        s.manager_id,
+        e.employee_id,
+        e.salary
+    FROM subtree s
     JOIN Employees e
-        ON e.manager_id = h.subordinate
+        ON e.manager_id = s.employee_id
+),
+
+stats AS (
+
+    SELECT
+        manager_id,
+        COUNT(*) - 1 AS team_size,
+        SUM(salary) AS budget
+    FROM subtree
+    GROUP BY manager_id
 )
 
 SELECT
-    l.employee_id,
-    l.employee_name,
-    l.level,
-    COUNT(h.subordinate) - 1 AS team_size,
-    SUM(e.salary) AS budget
-FROM level_cte l
-JOIN hierarchy h
-    ON l.employee_id = h.manager
-JOIN Employees e
-    ON h.subordinate = e.employee_id
-GROUP BY
-    l.employee_id,
-    l.employee_name,
-    l.level
+    h.employee_id,
+    h.employee_name,
+    h.level,
+    s.team_size,
+    s.budget
+FROM hierarchy h
+JOIN stats s
+    ON h.employee_id = s.manager_id
 ORDER BY
-    l.level,
-    budget DESC,
-    l.employee_name;
+    h.level ASC,
+    s.budget DESC,
+    h.employee_name ASC;
